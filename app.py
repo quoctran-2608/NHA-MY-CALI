@@ -11,7 +11,7 @@ app = Flask(__name__)
 FB_VERIFY_TOKEN = os.getenv('FB_VERIFY_TOKEN', 'mysecret')
 FB_APP_SECRET = os.getenv('FB_APP_SECRET', 'your_facebook_app_secret')
 ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '1087363824973385617:crKKlfdMIEFnfJmmnRhTdczBYkEmYmzDhCciTLeyglWuqKonGKchjaCiztxfZiZp')
-ZALO_CHAT_ID = os.getenv('ZALO_CHAT_ID', 'your_chat_id')  # Thay bằng chat_id thực tế (lấy từ bước 2)
+ZALO_CHAT_ID = os.getenv('ZALO_CHAT_ID', '1087363824973385617')
 
 # Base URL cho Zalo Bot API
 ZALO_BASE_URL = 'https://bot-api.zapps.me'
