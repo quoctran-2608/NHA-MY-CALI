@@ -1,0 +1,4 @@
+flask
+requests
+zalo_bot
+gunicorn
