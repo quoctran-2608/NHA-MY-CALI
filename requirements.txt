@@ -1,4 +1,4 @@
 flask
 requests
-zalo_bot
+python-zalo-bot
 gunicorn
