@@ -22,7 +22,7 @@ def verify_signature(payload, signature):
 # Hàm gửi thông báo đến Zalo
 def send_zalo_notification(message_text):
     try:
-        url = f"{ZALO_BASE_URL}/bot{ZALO_BOT_TOKEN}/sendMessage"
+        url = f"{ZALO_BASE_URL}/bot/{ZALO_BOT_TOKEN}/sendMessage"  # Thêm '/' sau 'bot' nếu cần, nhưng theo docs là không
         payload = {
             "chat_id": ZALO_CHAT_ID,
             "text": message_text
@@ -48,6 +48,41 @@ def send_zalo_notification(message_text):
     except Exception as e:
         print(f"Exception sending to Zalo: {e}")
         return False
+
+# Hàm mới: Lấy updates từ Zalo để xác thực chat_id
+def get_zalo_updates():
+    try:
+        url = f"{ZALO_BASE_URL}/bot/{ZALO_BOT_TOKEN}/getUpdates"
+        payload = {}  # Có thể thêm params như offset, limit nếu cần (tương tự Telegram)
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(url, json=payload, headers=headers)
+        
+        if response.status_code == 200:
+            resp_json = response.json()
+            print(f"Zalo getUpdates response: {json.dumps(resp_json, indent=2)}")
+            if resp_json.get('ok', False):
+                updates = resp_json.get('result', [])
+                chat_ids = []
+                for update in updates:
+                    if 'message' in update:
+                        chat_id = update['message'].get('chat', {}).get('id')
+                        if chat_id:
+                            chat_ids.append(chat_id)
+                            print(f"Found chat_id: {chat_id} from user: {update['message'].get('from', {}).get('id')}")
+                if chat_ids:
+                    print(f"Available chat_ids: {chat_ids}. Hãy dùng một trong số này cho ZALO_CHAT_ID.")
+                else:
+                    print("No updates found. Hãy gửi tin nhắn cho bot trước.")
+                return chat_ids
+            else:
+                print(f"getUpdates error: {resp_json.get('description')}")
+                return None
+        else:
+            print(f"HTTP error in getUpdates: {response.status_code} - {response.text}")
+            return None
+    except Exception as e:
+        print(f"Exception in getUpdates: {e}")
+        return None
 
 # Route webhook Facebook
 @app.route('/webhook', methods=['GET', 'POST'])
@@ -75,6 +110,15 @@ def webhook():
                         send_zalo_notification(full_message)
         
         return Response(status=200)
+
+# Route mới để test getUpdates (truy cập localhost:10000/test_updates)
+@app.route('/test_updates', methods=['GET'])
+def test_updates():
+    chat_ids = get_zalo_updates()
+    if chat_ids:
+        return f"Chat IDs found: {chat_ids}", 200
+    else:
+        return "No chat IDs found or error occurred. Check console logs.", 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
