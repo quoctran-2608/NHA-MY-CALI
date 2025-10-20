@@ -22,7 +22,7 @@ def verify_signature(payload, signature):
 # Hàm gửi thông báo đến Zalo
 def send_zalo_notification(message_text):
     try:
-        url = f"{ZALO_BASE_URL}/bot{ZALO_BOT_TOKEN}/sendMessage"  # Thêm '/' sau 'bot' nếu cần, nhưng theo docs là không
+        url = f"{ZALO_BASE_URL}/bot{ZALO_BOT_TOKEN}/sendMessage"
         payload = {
             "chat_id": ZALO_CHAT_ID,
             "text": message_text
@@ -52,7 +52,7 @@ def send_zalo_notification(message_text):
 # Hàm mới: Lấy updates từ Zalo để xác thực chat_id
 def get_zalo_updates():
     try:
-        url = f"{ZALO_BASE_URL}/bot/{ZALO_BOT_TOKEN}/getUpdates"
+        url = f"{ZALO_BASE_URL}/bot{ZALO_BOT_TOKEN}/getUpdates"
         payload = {}  # Có thể thêm params như offset, limit nếu cần (tương tự Telegram)
         headers = {"Content-Type": "application/json"}
         response = requests.post(url, json=payload, headers=headers)
