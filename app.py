@@ -5,7 +5,7 @@ import hmac
 import hashlib
 import json
 import os
-from zalo-bot import Bot
+from zalo_bot import Bot
 
 app = Flask(__name__)
 
