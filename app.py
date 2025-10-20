@@ -11,17 +11,18 @@ app = Flask(__name__)
 FB_VERIFY_TOKEN = os.getenv('FB_VERIFY_TOKEN', 'mysecret')
 FB_APP_SECRET = os.getenv('FB_APP_SECRET', 'your_facebook_app_secret')
 ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '1087363824973385617:crKKlfdMIEFnfJmmnRhTdczBYkEmYmzDhCciTLeyglWuqKonGKchjaCiztxfZiZp')
-ZALO_CHAT_ID = os.getenv('ZALO_CHAT_ID', '1087363824973385617')
+ZALO_CHAT_ID = os.getenv('ZALO_CHAT_ID', '1087363824973385617')  # Cập nhật sau khi lấy được
+ZALO_WEBHOOK_SECRET = os.getenv('ZALO_WEBHOOK_SECRET', 'my-zalo-secret')  # Khóa bí mật cho webhook Zalo
 
 # Base URL cho Zalo Bot API
 ZALO_BASE_URL = 'https://bot-api.zapps.me'
 
-# Hàm verify signature từ Facebook (giữ nguyên)
+# Hàm verify signature từ Facebook
 def verify_signature(payload, signature):
     expected_sig = hmac.new(FB_APP_SECRET.encode(), payload, hashlib.sha256).hexdigest()
     return expected_sig == signature.split('=')[1]
 
-# Hàm gửi thông báo qua Zalo Bot API (dựa trên tài liệu: POST /sendMessage)
+# Hàm gửi thông báo qua Zalo Bot API
 def send_zalo_notification(message_text):
     try:
         url = f"{ZALO_BASE_URL}/bot{ZALO_BOT_TOKEN}/sendMessage"
@@ -35,7 +36,6 @@ def send_zalo_notification(message_text):
         }
         response = requests.post(url, json=payload, headers=headers)
         
-        # Kiểm tra response theo tài liệu (ok: true)
         if response.status_code == 200:
             resp_json = response.json()
             if resp_json.get('ok', False):
@@ -51,7 +51,7 @@ def send_zalo_notification(message_text):
         print(f"Exception sending to Zalo: {e}")
         return False
 
-# Route webhook Facebook (giữ nguyên, chỉ cập nhật gửi Zalo)
+# Route webhook Facebook (giữ nguyên)
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
     if request.method == 'GET':
@@ -78,5 +78,25 @@ def webhook():
         
         return Response(status=200)
 
+# Route webhook Zalo (mới, để lấy chat_id)
+@app.route('/zalo-webhook', methods=['POST'])
+def zalo_webhook():
+    secret_token = request.headers.get('X-Bot-Api-Secret-Token')
+    if secret_token != ZALO_WEBHOOK_SECRET:
+        print(f"Invalid Zalo webhook secret: {secret_token}")
+        return Response(json.dumps({"message": "Unauthorized"}), status=403, mimetype='application/json')
+    
+    data = request.json
+    print(f"Zalo webhook data: {json.dumps(data, indent=2)}")  # In toàn bộ dữ liệu để debug
+    if data.get('ok', False) and 'result' in data:
+        result = data['result']
+        if 'message' in result and 'chat' in result['message']:
+            chat_id = result['message']['chat']['id']
+            print(f"Found chat_id: {chat_id}")
+            # Gửi tin nhắn test để xác nhận
+            send_zalo_notification(f"Test webhook Zalo, chat_id: {chat_id}")
+    
+    return Response(json.dumps({"message": "Success"}), status=200, mimetype='application/json')
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)  # Port 10000 để khớp Render
+    app.run(host='0.0.0.0', port=10000)
