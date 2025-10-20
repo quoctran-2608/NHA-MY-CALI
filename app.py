@@ -3,17 +3,51 @@ import hmac
 import hashlib
 import json
 import os
+import requests
 
 app = Flask(__name__)
 
 # Biến cấu hình (dùng env vars cho bảo mật)
 FB_VERIFY_TOKEN = os.getenv('FB_VERIFY_TOKEN', 'mysecret')
 FB_APP_SECRET = os.getenv('FB_APP_SECRET', '9ea198059a894a995edd4ef9e57b6b00')
+ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '1087363824973385617:crKKlfdMIEFnfJmmnRhTdczBYkEmYmzDhCciTLeyglWuqKonGKchjaCiztxfZiZp')
+ZALO_CHAT_ID = os.getenv('ZALO_CHAT_ID', '1f7c0fca289ec1c0988f')
+ZALO_BASE_URL = 'https://bot-api.zapps.me'
 
 # Hàm verify signature từ Facebook
 def verify_signature(payload, signature):
     expected_sig = hmac.new(FB_APP_SECRET.encode(), payload, hashlib.sha256).hexdigest()
     return expected_sig == signature.split('=')[1]
+
+# Hàm gửi thông báo đến Zalo
+def send_zalo_notification(message_text):
+    try:
+        url = f"{ZALO_BASE_URL}/bot{ZALO_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": ZALO_CHAT_ID,
+            "text": message_text
+        }
+        headers = {
+            "Content-Type": "application/json"
+        }
+        print(f"Sending Zalo API request: {url}, payload: {json.dumps(payload)}")
+        response = requests.post(url, json=payload, headers=headers)
+        
+        if response.status_code == 200:
+            resp_json = response.json()
+            print(f"Zalo API response: {json.dumps(resp_json, indent=2)}")
+            if resp_json.get('ok', False):
+                print(f"Zalo sent successfully: {resp_json.get('result', {})}")
+                return True
+            else:
+                print(f"Zalo API error: {resp_json.get('description', 'Unknown error')}")
+                return False
+        else:
+            print(f"HTTP error sending to Zalo: {response.status_code} - {response.text}")
+            return False
+    except Exception as e:
+        print(f"Exception sending to Zalo: {e}")
+        return False
 
 # Route webhook Facebook
 @app.route('/webhook', methods=['GET', 'POST'])
@@ -36,7 +70,9 @@ def webhook():
                     for msg in entry['messaging']:
                         sender_id = msg['sender']['id']
                         message_text = msg.get('message', {}).get('text', 'No text')
-                        print(f"New message from {sender_id}: {message_text}")
+                        full_message = f"New message from {sender_id}: {message_text}"
+                        print(full_message)
+                        send_zalo_notification(full_message)
         
         return Response(status=200)
 
