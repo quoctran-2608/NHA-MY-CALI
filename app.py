@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # Biến cấu hình (dùng env vars cho bảo mật)
 FB_VERIFY_TOKEN = os.getenv('FB_VERIFY_TOKEN', 'mysecret')
-FB_APP_SECRET = os.getenv('FB_APP_SECRET', 'your_facebook_app_secret')
+FB_APP_SECRET = os.getenv('FB_APP_SECRET', '9ea198059a894a995edd4ef9e57b6b00')
 ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '1087363824973385617:crKKlfdMIEFnfJmmnRhTdczBYkEmYmzDhCciTLeyglWuqKonGKchjaCiztxfZiZp')
 ZALO_CHAT_ID = os.getenv('ZALO_CHAT_ID', '1f7c0fca289ec1c0988f')  # Đảm bảo đã thay đúng
 ZALO_WEBHOOK_SECRET = os.getenv('ZALO_WEBHOOK_SECRET', 'my-zalo-secret')
