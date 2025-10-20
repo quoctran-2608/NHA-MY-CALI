@@ -10,6 +10,7 @@ app = Flask(__name__)
 # Biến cấu hình (dùng env vars cho bảo mật)
 FB_VERIFY_TOKEN = os.getenv('FB_VERIFY_TOKEN', 'mysecret')
 FB_APP_SECRET = os.getenv('FB_APP_SECRET', '9ea198059a894a995edd4ef9e57b6b00')
+FB_PAGE_ACCESS_TOKEN = os.getenv('FB_PAGE_ACCESS_TOKEN', 'your_page_access_token_here')  # Thêm access token cho Page để lấy thông tin user
 ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '1087363824973385617:crKKlfdMIEFnfJmmnRhTdczBYkEmYmzDhCciTLeyglWuqKonGKchjaCiztxfZiZp')
 ZALO_CHAT_ID = os.getenv('ZALO_CHAT_ID', '1f7c0fca289ec1c0988f')
 ZALO_BASE_URL = 'https://bot-api.zapps.me'
@@ -18,6 +19,21 @@ ZALO_BASE_URL = 'https://bot-api.zapps.me'
 def verify_signature(payload, signature):
     expected_sig = hmac.new(FB_APP_SECRET.encode(), payload, hashlib.sha256).hexdigest()
     return expected_sig == signature.split('=')[1]
+
+# Hàm lấy tên user từ Facebook Graph API
+def get_facebook_user_name(sender_id):
+    try:
+        url = f"https://graph.facebook.com/v20.0/{sender_id}?fields=name&access_token={FB_PAGE_ACCESS_TOKEN}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('name', 'Khách hàng không xác định')
+        else:
+            print(f"Error fetching Facebook user name: {response.status_code} - {response.text}")
+            return 'Khách hàng không xác định'
+    except Exception as e:
+        print(f"Exception fetching Facebook user name: {e}")
+        return 'Khách hàng không xác định'
 
 # Hàm gửi thông báo đến Zalo
 def send_zalo_notification(message_text):
@@ -69,8 +85,9 @@ def webhook():
                 if 'messaging' in entry:
                     for msg in entry['messaging']:
                         sender_id = msg['sender']['id']
-                        message_text = msg.get('message', {}).get('text', 'No text')
-                        full_message = f"New message from {sender_id}: {message_text}"
+                        message_text = msg.get('message', {}).get('text', 'Không có nội dung văn bản')
+                        user_name = get_facebook_user_name(sender_id)
+                        full_message = f"Có tin nhắn mới từ {user_name} trên Facebook Messenger: {message_text}"
                         print(full_message)
                         send_zalo_notification(full_message)
         
