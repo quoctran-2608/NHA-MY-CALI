@@ -1,5 +1,5 @@
 flask
 requests
-python-zalo-bot
+zalo-bot
 gunicorn
 httpx
