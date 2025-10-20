@@ -22,7 +22,7 @@ def verify_signature(payload, signature):
 # Hàm gửi thông báo đến Zalo
 def send_zalo_notification(message_text):
     try:
-        url = f"{ZALO_BASE_URL}/bot/{ZALO_BOT_TOKEN}/sendMessage"  # Thêm '/' sau 'bot' nếu cần, nhưng theo docs là không
+        url = f"{ZALO_BASE_URL}/bot{ZALO_BOT_TOKEN}/sendMessage"  # Thêm '/' sau 'bot' nếu cần, nhưng theo docs là không
         payload = {
             "chat_id": ZALO_CHAT_ID,
             "text": message_text
