@@ -14,6 +14,7 @@ ZALO_BASE_URL = os.environ.get('ZALO_BASE_URL', 'https://bot-api.zapps.me')
 
 def send_zalo_notification(message_text):
     try:
+        print(f"Using ZALO_CHAT_ID: '{ZALO_CHAT_ID}'")  # Thêm log để debug chat_id
         url = f"{ZALO_BASE_URL}/bot{ZALO_BOT_TOKEN}/sendMessage"
         payload = {
             "chat_id": ZALO_CHAT_ID,
@@ -56,6 +57,7 @@ def webhook():
         return jsonify({"status": "success", "message": "Notification sent to Zalo"}), 200
     else:
         return jsonify({"status": "error", "message": "Failed to send notification to Zalo"}), 500
-   
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)  # debug=True chỉ để phát triển, tắt khi deploy thực tế
