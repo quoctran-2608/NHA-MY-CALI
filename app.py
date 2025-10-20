@@ -1,20 +1,27 @@
-import requests
+from flask import Flask, request, Response
+import hmac
+import hashlib
 import json
 import os
-from flask import Flask, request, jsonify
+import requests
 
 app = Flask(__name__)
 
-# Lưu ý: Để bảo mật, bạn nên đặt các giá trị nhạy cảm như token vào biến môi trường trên Render.
-# Ví dụ: Trên Render, vào Environment Variables, thêm ZALO_BOT_TOKEN, ZALO_CHAT_ID, ZALO_BASE_URL.
-# Sau đó, sử dụng os.environ.get('ZALO_BOT_TOKEN') thay vì hardcode.
-ZALO_BOT_TOKEN = os.environ.get('ZALO_BOT_TOKEN', '1087363824973385617:crKKlfdMIEFnfJmmnRhTdczBYkEmYmzDhCciTLeyglWuqKonGKchjaCiztxfZiZp')
-ZALO_CHAT_ID = os.environ.get('ZALO_CHAT_ID', '1f7c0fca289ec1c0988f')
-ZALO_BASE_URL = os.environ.get('ZALO_BASE_URL', 'https://bot-api.zapps.me')
+# Biến cấu hình (dùng env vars cho bảo mật)
+FB_VERIFY_TOKEN = os.getenv('FB_VERIFY_TOKEN', 'mysecret')
+FB_APP_SECRET = os.getenv('FB_APP_SECRET', '9ea198059a894a995edd4ef9e57b6b00')
+ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '1087363824973385617:crKKlfdMIEFnfJmmnRhTdczBYkEmYmzDhCciTLeyglWuqKonGKchjaCiztxfZiZp')
+ZALO_CHAT_ID = os.getenv('ZALO_CHAT_ID', '1f7c0fca289ec1c0988f')
+ZALO_BASE_URL = 'https://bot-api.zapps.me'
 
+# Hàm verify signature từ Facebook
+def verify_signature(payload, signature):
+    expected_sig = hmac.new(FB_APP_SECRET.encode(), payload, hashlib.sha256).hexdigest()
+    return expected_sig == signature.split('=')[1]
+
+# Hàm gửi thông báo đến Zalo
 def send_zalo_notification(message_text):
     try:
-        print(f"Using ZALO_CHAT_ID: '{ZALO_CHAT_ID}'")  # Thêm log để debug chat_id
         url = f"{ZALO_BASE_URL}/bot{ZALO_BOT_TOKEN}/sendMessage"
         payload = {
             "chat_id": ZALO_CHAT_ID,
@@ -42,22 +49,32 @@ def send_zalo_notification(message_text):
         print(f"Exception sending to Zalo: {e}")
         return False
 
-@app.route('/webhook', methods=['POST'])
+# Route webhook Facebook
+@app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
-    data = request.json
-    if not data:
-        return jsonify({"error": "Invalid JSON"}), 400
+    if request.method == 'GET':
+        if request.args.get('hub.verify_token') == FB_VERIFY_TOKEN:
+            return request.args.get('hub.challenge')
+        return "Invalid token", 403
     
-    message_text = data.get('text')
-    if not message_text:
-        return jsonify({"error": "No 'text' field provided in JSON"}), 400
-    
-    success = send_zalo_notification(message_text)
-    if success:
-        return jsonify({"status": "success", "message": "Notification sent to Zalo"}), 200
-    else:
-        return jsonify({"status": "error", "message": "Failed to send notification to Zalo"}), 500
+    if request.method == 'POST':
+        signature = request.headers.get('X-Hub-Signature-256')
+        payload = request.data
+        if not verify_signature(payload, signature):
+            return "Invalid signature", 403
+        
+        data = json.loads(payload)
+        if 'entry' in data:
+            for entry in data['entry']:
+                if 'messaging' in entry:
+                    for msg in entry['messaging']:
+                        sender_id = msg['sender']['id']
+                        message_text = msg.get('message', {}).get('text', 'No text')
+                        full_message = f"New message from {sender_id}: {message_text}"
+                        print(full_message)
+                        send_zalo_notification(full_message)
+        
+        return Response(status=200)
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port, debug=True)  # debug=True chỉ để phát triển, tắt khi deploy thực tế
+    app.run(host='0.0.0.0', port=10000)
